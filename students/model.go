@@ -1,14 +1,19 @@
 package students
+
+import "ldapExample/users"
+
 type Repository interface {
 	GetStudents() ([]*Student,error)
 	AddStudent(st *Student) (*Student,error)
+	GetStudent(id int64) (*Student,error)
+	DeleteStudent(st *Student) error
+	UpdateStudent(st *Student) (*Student,error)
 }
 
 
 type Student struct{
-	Id int64 `json:"id,pk"`
+	users.User
 	FirstName string `json:"firstname,omitempty"`
 	LastName string `json:"lastname,omitempty"`
-	Username string `json:"username,omitempty"`
-	Password string `json:"password,omitempty"`
+	CourseId int64 `json:"courseid"`
 }

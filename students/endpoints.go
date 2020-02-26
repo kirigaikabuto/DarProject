@@ -1,12 +1,15 @@
 package students
 
 import (
+	"encoding/json"
 	"fmt"
+	"github.com/gorilla/mux"
+	"html/template"
+	"io/ioutil"
 	"log"
 	"net/http"
-	"encoding/json"
 	"path"
-	"html/template"
+	"strconv"
 )
 var(
 	indexTemplate = template.Must(template.ParseFiles(path.Join("templates", "layout.html"), path.Join("templates", "index.html")))
@@ -14,7 +17,11 @@ var(
 type Endpoints interface {
 	GetStudents() func(w http.ResponseWriter,r *http.Request)
 	AddStudent() func(w http.ResponseWriter,r *http.Request)
+	GetStudent(idParam string) func(w http.ResponseWriter,r *http.Request)
+	DeleteStudent(idParam string) func(w http.ResponseWriter,r *http.Request)
+	UpdateStudent(idParam string) func(w http.ResponseWriter,r *http.Request)
 	Index() func(w http.ResponseWriter,r *http.Request)
+
 }
 type endpointsFactory struct {
 	studentInter Repository
@@ -43,28 +50,111 @@ func (ef *endpointsFactory) GetStudents() func(w http.ResponseWriter,r *http.Req
 			respondJSON(w, http.StatusInternalServerError, "Ошибка"+err.Error())
 			return
 		}
-		fmt.Println(students)
-		newstudents, error := json.Marshal(students)
-		if error != nil {
-			respondJSON(w, http.StatusInternalServerError, "Error"+err.Error())
-			return
-		}
-		respondJSON(w, http.StatusOK, string(newstudents))
+
+		respondJSON(w, http.StatusOK, students)
 	}
 }
 
 func (ef *endpointsFactory) AddStudent() func(w http.ResponseWriter,r *http.Request){
 	return func(w http.ResponseWriter,r *http.Request){
-		st:=&Student{
-			FirstName: "asdsada",
-			LastName:  "asdsada",
-			Username:  "123213",
-			Password:  "adasdadsa",
-		}
-		st,err:=ef.studentInter.AddStudent(st)
+		data,err:=ioutil.ReadAll(r.Body)
 		if err!=nil{
-			log.Fatal(err)
+			respondJSON(w,http.StatusInternalServerError,err.Error())
+			return
 		}
+		student:=&Student{}
+		if err:= json.Unmarshal(data,&student);err!=nil{
+			respondJSON(w,http.StatusBadRequest,err.Error())
+			return
+		}
+		st,err:=ef.studentInter.AddStudent(student)
+		if err!=nil{
+			respondJSON(w,http.StatusBadRequest,err.Error())
+			return
+		}
+		respondJSON(w,http.StatusOK,st)
+	}
+}
+func (ef *endpointsFactory) GetStudent(idParam string) func(w http.ResponseWriter,r *http.Request) {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars:=mux.Vars(r)
+		paramid,paramerr:=vars[idParam]
+		if !paramerr{
+			respondJSON(w,http.StatusBadRequest,"Не был передан аргумент")
+			return
+		}
+		id,err:=strconv.ParseInt(paramid,10,10)
+		if err!=nil{
+			respondJSON(w,http.StatusBadRequest,err.Error())
+			return
+		}
+		student,err:=ef.studentInter.GetStudent(id)
+		if err!=nil{
+			respondJSON(w,http.StatusInternalServerError,err.Error())
+			return
+		}
+		respondJSON(w,http.StatusOK,student)
+	}
+}
+func (ef *endpointsFactory) DeleteStudent(idParam string) func(w http.ResponseWriter,r *http.Request){
+	return func(w http.ResponseWriter,r *http.Request){
+		vars:=mux.Vars(r)
+		paramid,paramerr:=vars[idParam]
+		if !paramerr{
+			respondJSON(w,http.StatusBadRequest,"Не был передан аргумент")
+			return
+		}
+		id,err:=strconv.ParseInt(paramid,10,10)
+		if err!=nil{
+			respondJSON(w,http.StatusBadRequest,err.Error())
+			return
+		}
+		student,err:=ef.studentInter.GetStudent(id)
+		if err!=nil{
+			respondJSON(w,http.StatusInternalServerError,err.Error())
+			return
+		}
+		err=ef.studentInter.DeleteStudent(student)
+		if err!=nil{
+			respondJSON(w,http.StatusInternalServerError,err.Error())
+			return
+		}
+		respondJSON(w,http.StatusOK,"Student was deleted")
+	}
+}
+func (ef *endpointsFactory) UpdateStudent(idParam string) func(w http.ResponseWriter,r *http.Request){
+	return func(w http.ResponseWriter,r *http.Request){
+		vars:=mux.Vars(r)
+		paramid,paramerr:=vars[idParam]
+		if !paramerr{
+			respondJSON(w,http.StatusBadRequest,"Не был передан аргумент")
+			return
+		}
+		id,err:=strconv.ParseInt(paramid,10,10)
+		if err!=nil{
+			respondJSON(w,http.StatusBadRequest,err.Error())
+			return
+		}
+		student,err:=ef.studentInter.GetStudent(id)
+		if err!=nil{
+			respondJSON(w,http.StatusInternalServerError,err.Error())
+			return
+		}
+		data,err:=ioutil.ReadAll(r.Body)
+		if err!=nil{
+			respondJSON(w,http.StatusInternalServerError,err.Error())
+			return
+		}
+		if err:=json.Unmarshal(data,&student);err!=nil{
+			respondJSON(w,http.StatusInternalServerError,err.Error())
+			return
+		}
+		updated_student,err:=ef.studentInter.UpdateStudent(student)
+		if err!=nil{
+			respondJSON(w,http.StatusInternalServerError,err)
+			return
+		}
+		respondJSON(w,http.StatusOK,updated_student)
 	}
 }
 func (ef *endpointsFactory) Index() func(w http.ResponseWriter,r *http.Request) {

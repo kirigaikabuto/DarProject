@@ -56,6 +56,15 @@ func(mpro *repo) GetStudents() ([]*Student,error){
 	return students,nil
 }
 func (mpro *repo) AddStudent(st *Student) (*Student,error){
+	students,err:=mpro.GetStudents()
+	n:=len(students)
+	if n!=0{
+		student:=students[n-1]
+		st.User.Id = student.User.Id+1
+	}else{
+		st.User.Id = 1
+	}
+
 	insertResult,err:=collection.InsertOne(context.TODO(),st)
 	if err!=nil{
 		return nil,err
@@ -63,4 +72,35 @@ func (mpro *repo) AddStudent(st *Student) (*Student,error){
 	fmt.Println("Inserted document",insertResult.InsertedID)
 	return st,nil
 }
-
+func (mpro *repo) GetStudent(id int64) (*Student,error){
+	filter:=bson.D{{"user.id",id}}
+	student:=&Student{}
+	err:=collection.FindOne(context.TODO(),filter).Decode(&student)
+	if err!=nil{
+		return nil,err
+	}
+	return student,nil
+}
+func (mpro *repo) DeleteStudent(st *Student) error{
+	filter:=bson.D{{"user.id",st.Id}}
+	_,err:=collection.DeleteOne(context.TODO(),filter)
+	if err!=nil{
+		return err
+	}
+	return nil
+}
+func (mpro *repo) UpdateStudent(st *Student)  (*Student,error){
+	filter:=bson.D{{"user.id",st.Id}}
+	update:=bson.D{{"$set",bson.D{
+		{"user.username",st.Username},
+		{"user.password",st.Password},
+		{"firstname",st.FirstName},
+		{"lastname",st.LastName},
+		{"courseid",st.CourseId},
+	}}}
+	_,err:=collection.UpdateOne(context.TODO(),filter,update)
+	if err!=nil{
+		return nil,err
+	}
+	return st,nil
+}
