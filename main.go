@@ -3,12 +3,10 @@ package main
 import (
 	"github.com/gorilla/mux"
 	"ldapExample/courses"
-
 	"ldapExample/students"
 	"log"
 	"net/http"
 	"fmt"
-
 	"strings"
 )
 
@@ -34,6 +32,7 @@ func main(){
 	router.Methods("DELETE").Path("/students/{id}").HandlerFunc(studentendpoints.DeleteStudent("id"))
 	router.Methods("PUT").Path("/students/{id}").HandlerFunc(studentendpoints.UpdateStudent("id"))
 	router.Methods("POST").Path("/students/").HandlerFunc(studentendpoints.AddStudent())
+	router.Methods("POST").Path("/students/login").HandlerFunc(studentendpoints.LoginStudent())
 	//courses
 	coursesrepo,err:=courses.NewCourseRepository(conf)
 	if err!=nil{

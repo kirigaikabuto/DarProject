@@ -2,10 +2,11 @@ package students
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/gorilla/mux"
 	"html/template"
 	"io/ioutil"
+	"ldapExample/sessions"
+	"ldapExample/users"
 	"log"
 	"net/http"
 	"path"
@@ -20,6 +21,7 @@ type Endpoints interface {
 	GetStudent(idParam string) func(w http.ResponseWriter,r *http.Request)
 	DeleteStudent(idParam string) func(w http.ResponseWriter,r *http.Request)
 	UpdateStudent(idParam string) func(w http.ResponseWriter,r *http.Request)
+	LoginStudent() func(w http.ResponseWriter,r *http.Request)
 	Index() func(w http.ResponseWriter,r *http.Request)
 
 }
@@ -45,11 +47,18 @@ func respondJSON(w http.ResponseWriter, status int, payload interface{}) {
 func (ef *endpointsFactory) GetStudents() func(w http.ResponseWriter,r *http.Request){
 	return func(w http.ResponseWriter,r *http.Request){
 		students, err := ef.studentInter.GetStudents()
-		fmt.Println(students)
 		if err != nil {
 			respondJSON(w, http.StatusInternalServerError, "Ошибка"+err.Error())
 			return
 		}
+		//value_session:=sessions.GetSession(r,"user")
+		//student:=&Student{}
+		//if err:=json.Unmarshal([]byte(value_session),&student);err!=nil{
+		//	respondJSON(w,http.StatusBadRequest,err.Error())
+		//	return
+		//}
+		//fmt.Println(student.Username)
+
 
 		respondJSON(w, http.StatusOK, students)
 	}
@@ -157,6 +166,29 @@ func (ef *endpointsFactory) UpdateStudent(idParam string) func(w http.ResponseWr
 		respondJSON(w,http.StatusOK,updated_student)
 	}
 }
+func (ef *endpointsFactory) LoginStudent() func(w http.ResponseWriter,r *http.Request) {
+	return func(w http.ResponseWriter,r *http.Request) {
+		user:=&users.User{}
+		err:=json.NewDecoder(r.Body).Decode(user)
+		if err!=nil{
+			respondJSON(w,http.StatusInternalServerError,err.Error())
+			return
+		}
+		student,err:=ef.studentInter.GetStudentByUser(user)
+		if err!=nil{
+			respondJSON(w,http.StatusInternalServerError,err.Error())
+			return
+		}
+		cookie_value,err:=json.Marshal(student)
+		if err!=nil{
+			respondJSON(w,http.StatusOK,err)
+			return
+		}
+		sessions.SetSession("user",string(cookie_value),w,)
+		respondJSON(w,http.StatusOK,student)
+	}
+}
+
 func (ef *endpointsFactory) Index() func(w http.ResponseWriter,r *http.Request) {
 	return func(w http.ResponseWriter,r *http.Request) {
 		if err := indexTemplate.ExecuteTemplate(w, "layout", nil); err != nil {

@@ -6,6 +6,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
+	"ldapExample/users"
 )
 var (
 	collection *mongo.Collection
@@ -103,4 +104,13 @@ func (mpro *repo) UpdateStudent(st *Student)  (*Student,error){
 		return nil,err
 	}
 	return st,nil
+}
+func (mpro *repo) GetStudentByUser(user *users.User)(*Student,error){
+	filter:=bson.D{{"user.username",user.Username},{"user.password",user.Password}}
+	student:=&Student{}
+	err:=collection.FindOne(context.TODO(),filter).Decode(&student)
+	if err!=nil{
+		return nil,err
+	}
+	return student,nil
 }

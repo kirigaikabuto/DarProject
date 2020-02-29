@@ -8,6 +8,7 @@ type Repository interface {
 	GetStudent(id int64) (*Student,error)
 	DeleteStudent(st *Student) error
 	UpdateStudent(st *Student) (*Student,error)
+	GetStudentByUser(user *users.User)(*Student,error)
 }
 
 
